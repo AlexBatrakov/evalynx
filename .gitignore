@@ -1,0 +1,19 @@
+.DS_Store
+
+# Local planning and orchestration
+.project_local/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+build/
+dist/
+*.egg-info/
+
+# Local environment files
+.env
+.env.*
