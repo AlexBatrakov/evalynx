@@ -1,51 +1,80 @@
 # Evalynx
 
-Evalynx is a backend control plane for computational runs.
+Backend control plane for reproducible computational runs.
 
-The project provides a service layer for submitting, executing, tracking, and reproducing runs across external computational systems such as simulations and analytics pipelines. The goal is to build a backend-first platform around run lifecycle management rather than another standalone compute engine.
+Evalynx is a backend-first platform for submitting, executing, tracking, and reproducing runs across external computational systems such as simulations and analytics pipelines. The project focuses on the service layer around computation rather than the computation engines themselves.
 
-## Why This Project Exists
+## Why Evalynx Exists
 
-Many technical workflows already have strong computational cores but weak service boundaries:
+Many technical projects already have strong computational cores but weak execution management around them. In practice, that usually means:
 
 - jobs are launched through ad-hoc scripts
-- execution metadata is incomplete
-- results are scattered across logs and files
-- comparing runs is manual and error-prone
+- execution metadata is incomplete or inconsistent
+- results are scattered across logs, files, and local folders
+- comparing runs requires manual reconstruction
+- failures are hard to diagnose and retries are poorly tracked
 
-Evalynx addresses that gap by introducing:
+Evalynx addresses that gap with a backend control plane that can:
 
-- a consistent API for run submission
-- persistent run metadata
-- asynchronous execution
-- structured summaries, metrics, and artifacts
-- reproducibility-focused execution records
+- accept structured run requests through an API
+- persist run metadata in a relational model
+- execute jobs asynchronously
+- expose lifecycle states such as `queued`, `running`, `succeeded`, and `failed`
+- retain summaries, metrics, and artifact references
+- capture reproducibility metadata such as normalized config and execution provenance
 
-## MVP Focus
+## What This Project Demonstrates
 
-The initial MVP is intentionally narrow. It aims to demonstrate one solid backend vertical slice:
+Evalynx is designed as a backend portfolio project, with emphasis on:
 
-- FastAPI API
+- API design and request validation
+- relational data modeling and migrations
+- background job processing
+- execution lifecycle management
+- integration with external systems through explicit adapters
+- reproducibility-focused backend engineering
+
+## MVP Scope
+
+The initial MVP is intentionally narrow and aims to prove one strong vertical slice:
+
+- FastAPI application
 - PostgreSQL persistence
-- Redis + RQ background jobs
+- Redis + RQ background execution
 - `Project` and `Run` lifecycle management
-- one real external runner integration
-- reproducibility metadata, result summaries, and artifact references
+- one real runner integration
+- stored summaries, metrics, artifacts, and failure information
+- retry support for failed runs
 
-The first planned real runner is `solo-wargame-ai`.
+The first planned real runner is `solo-wargame-ai`, chosen because it already has strong reproducibility surfaces and does not depend on private personal data.
 
-## Repository Guide
+## Planned User Flow
 
-Project conventions and contribution rules live in [CONTRIBUTING.md](CONTRIBUTING.md).
+The MVP is centered around one main workflow:
 
-## Public Roadmap
+1. Create a project.
+2. Submit a run with a runner type and config.
+3. Persist the run as `queued`.
+4. Execute the run asynchronously through a worker.
+5. Store terminal state, summary data, metrics, and artifact references.
+6. Inspect the completed or failed run through the API.
 
-High-level milestones live in [ROADMAP.md](ROADMAP.md).
+## Documentation Map
 
-## Architecture
+- [Architecture](docs/architecture.md)
+- [Project narrative](docs/project_narrative.md)
+- [Public roadmap](ROADMAP.md)
+- [Contribution guide](CONTRIBUTING.md)
 
-The current public MVP architecture is described in [docs/architecture.md](docs/architecture.md).
+## Current Status
 
-## Status
+The repository is in early development.
 
-Early development. The repository is currently being bootstrapped around a backend-oriented MVP.
+The public foundation is already in place:
+
+- project framing
+- architecture and roadmap docs
+- contribution guide
+- git and GitHub setup
+
+The next implementation milestone is service bootstrap: application structure, configuration, test harness, and the first `/health` endpoint.

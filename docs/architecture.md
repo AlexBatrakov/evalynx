@@ -4,7 +4,7 @@
 
 Evalynx is a backend platform for managing computational runs. It acts as a control plane around external computation systems rather than owning the computation logic itself.
 
-The MVP architecture is designed around one core concern: a reliable run lifecycle.
+The MVP architecture is designed around one core concern: a reliable and inspectable run lifecycle.
 
 ```text
 Client
@@ -12,17 +12,25 @@ Client
 FastAPI API
   ->
 Service Layer
-  ->
-PostgreSQL
-  ->
-Redis + RQ
-  ->
-Worker
-  ->
-Runner Adapter
-  ->
-External Computational System
+  ->                 \
+PostgreSQL            Redis + RQ
+                        ->
+                      Worker
+                        ->
+                    Runner Adapter
+                        ->
+              External Computational System
 ```
+
+## Architectural Intent
+
+Evalynx is meant to make execution observable and reproducible, not merely to trigger scripts. The backend is therefore responsible for:
+
+- durable lifecycle state
+- consistent result storage
+- clear failure reporting
+- retry semantics
+- provenance capture for later inspection
 
 ## Core Domain
 
@@ -33,7 +41,7 @@ A run represents:
 - a selected runner type
 - a submitted configuration
 - a persistent lifecycle state
-- execution attempts
+- one or more execution attempts
 - structured outputs such as summaries, metrics, and artifacts
 
 The MVP also includes `Project` as the container for related runs.
@@ -45,8 +53,8 @@ The MVP also includes `Project` as the container for related runs.
 The API is responsible for:
 
 - request validation
-- run creation and retrieval
 - project creation and retrieval
+- run creation and retrieval
 - retry entry points
 - exposing lifecycle state to clients
 
@@ -70,6 +78,8 @@ PostgreSQL is the source of truth for:
 - metrics
 - artifact references
 
+Lifecycle state should remain database-backed and queryable rather than hidden inside worker-local execution flow.
+
 ### Queue and Worker
 
 Redis and RQ handle asynchronous execution. Workers are responsible for:
@@ -84,7 +94,22 @@ Redis and RQ handle asynchronous execution. Workers are responsible for:
 
 Evalynx integrates with external systems through runner adapters.
 
-The default MVP preference is an adapter plus subprocess boundary rather than deeply embedding external project internals into the application runtime. This keeps the integration surface explicit and makes reproducibility metadata easier to capture.
+The default MVP preference is an adapter plus subprocess boundary rather than deeply embedding external project internals into the application runtime. This keeps the integration surface explicit, reduces coupling, and makes reproducibility metadata easier to capture.
+
+## Run Lifecycle
+
+The intended lifecycle for the MVP is:
+
+1. receive a run request
+2. validate and normalize config
+3. persist the run as `queued`
+4. enqueue background execution
+5. mark the active attempt as `running`
+6. invoke the selected runner adapter
+7. store summary data, metrics, and artifact references
+8. mark the run as `succeeded` or `failed`
+
+This lifecycle is a product concern, not just an implementation detail. Much of the value of Evalynx comes from making these states explicit and queryable.
 
 ## Reproducibility
 
@@ -99,6 +124,13 @@ The MVP should capture:
 - source repository path
 - code version or commit when feasible
 
+The long-term goal is to make it easy to answer questions such as:
+
+- what exactly ran?
+- which config produced this result?
+- which code version was used?
+- what failed, and on which attempt?
+
 ## Initial API Surface
 
 Planned MVP endpoints:
@@ -112,11 +144,39 @@ Planned MVP endpoints:
 - `POST /runs/{id}/retry`
 - `GET /health`
 
+## Initial Data Model
+
+The early MVP is expected to revolve around:
+
+- `Project`
+- `Run`
+- `RunAttempt`
+- `RunMetric`
+- `RunArtifact`
+
 ## Initial Runner Strategy
 
 The first real runner target is `solo-wargame-ai`.
 
 It is a good first integration because it already has reproducible execution surfaces and does not depend on private personal data. A wearable analytics public-demo path remains a strong candidate for a later second runner.
+
+## Planned Code Layout
+
+The repository is expected to evolve toward a structure similar to:
+
+```text
+app/
+  api/
+  core/
+  db/
+  repositories/
+  runners/
+  schemas/
+  services/
+  workers/
+tests/
+docs/
+```
 
 ## Non-Goals For Early Development
 

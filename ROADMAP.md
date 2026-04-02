@@ -2,9 +2,14 @@
 
 This roadmap tracks public milestones for Evalynx. It intentionally stays high-level and product-facing.
 
-## Current Milestones
+## Completed Foundation Work
 
 - [x] Project foundation and contribution guide
+- [x] Public architecture and project narrative docs
+- [x] Initial GitHub repository setup
+
+## MVP Milestones
+
 - [ ] FastAPI service bootstrap
 - [ ] Run lifecycle vertical slice
 - [ ] Background worker execution flow
@@ -32,3 +37,7 @@ Potential follow-on areas after the MVP:
 - run comparison workflows
 - richer observability
 - scheduling and automation
+
+## Current Focus
+
+The next milestone is service bootstrap: establishing the executable FastAPI application skeleton, project structure, and basic test harness that later packets will build on.
