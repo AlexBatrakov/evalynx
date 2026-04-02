@@ -66,15 +66,35 @@ The MVP is centered around one main workflow:
 - [Public roadmap](ROADMAP.md)
 - [Contribution guide](CONTRIBUTING.md)
 
+## Local Development
+
+Evalynx now includes a minimal runnable FastAPI bootstrap with a `/health` endpoint.
+
+Requirements:
+
+- Python 3.11+
+
+Setup:
+
+1. Create a virtual environment: `python -m venv .venv`
+2. Activate it: `source .venv/bin/activate`
+3. Install dependencies: `pip install -e '.[dev]'`
+4. Start the service: `uvicorn app.main:app --reload`
+5. Run tests: `pytest`
+
 ## Current Status
 
 The repository is in early development.
 
-The public foundation is already in place:
+The current foundation now includes:
 
 - project framing
 - architecture and roadmap docs
 - contribution guide
 - git and GitHub setup
+- FastAPI service bootstrap
+- configuration scaffold
+- pytest-based test harness
+- `GET /health`
 
-The next implementation milestone is service bootstrap: application structure, configuration, test harness, and the first `/health` endpoint.
+The next implementation milestone is the run lifecycle vertical slice: initial persistence, run creation flow, queue submission, and the first stubbed asynchronous execution path.

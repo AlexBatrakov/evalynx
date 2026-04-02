@@ -10,7 +10,7 @@ This roadmap tracks public milestones for Evalynx. It intentionally stays high-l
 
 ## MVP Milestones
 
-- [ ] FastAPI service bootstrap
+- [x] FastAPI service bootstrap
 - [ ] Run lifecycle vertical slice
 - [ ] Background worker execution flow
 - [ ] First real runner integration
@@ -40,4 +40,4 @@ Potential follow-on areas after the MVP:
 
 ## Current Focus
 
-The next milestone is service bootstrap: establishing the executable FastAPI application skeleton, project structure, and basic test harness that later packets will build on.
+The next milestone is the run lifecycle vertical slice: establishing the first persisted run flow, queue handoff, and visible state transitions that build on the service bootstrap.
