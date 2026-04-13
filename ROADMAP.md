@@ -11,8 +11,8 @@ This roadmap tracks public milestones for Evalynx. It intentionally stays high-l
 ## MVP Milestones
 
 - [x] FastAPI service bootstrap
-- [ ] Run lifecycle vertical slice
-- [ ] Background worker execution flow
+- [x] Run lifecycle vertical slice
+- [x] Background worker execution flow
 - [ ] First real runner integration
 - [ ] Retry and lifecycle hardening
 - [ ] Docker Compose and CI setup
@@ -40,4 +40,4 @@ Potential follow-on areas after the MVP:
 
 ## Current Focus
 
-The next milestone is the run lifecycle vertical slice: establishing the first persisted run flow, queue handoff, and visible state transitions that build on the service bootstrap.
+The next milestone is the first real runner integration: replacing the stub lifecycle path with `solo-wargame-ai` while keeping the persisted run flow inspectable and reproducible.
