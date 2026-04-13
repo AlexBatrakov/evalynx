@@ -31,6 +31,7 @@ class Settings:
     environment: str = "development"
     debug: bool = False
     api_prefix: str = ""
+    database_url: str = "sqlite:///./evalynx.db"
 
 
 @lru_cache
@@ -40,4 +41,5 @@ def get_settings() -> Settings:
         environment=os.getenv("EVALYNX_ENV", "development"),
         debug=_get_bool_env("EVALYNX_DEBUG", default=False),
         api_prefix=_normalize_api_prefix(os.getenv("EVALYNX_API_PREFIX", "")),
+        database_url=os.getenv("EVALYNX_DATABASE_URL", "sqlite:///./evalynx.db"),
     )

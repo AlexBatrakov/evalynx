@@ -68,7 +68,7 @@ The MVP is centered around one main workflow:
 
 ## Local Development
 
-Evalynx now includes a minimal runnable FastAPI bootstrap with a `/health` endpoint.
+Evalynx now includes the first persisted run lifecycle slice with SQLAlchemy/Alembic-backed storage and a stub worker execution path.
 
 Requirements:
 
@@ -79,8 +79,12 @@ Setup:
 1. Create a virtual environment: `python -m venv .venv`
 2. Activate it: `source .venv/bin/activate`
 3. Install dependencies: `pip install -e '.[dev]'`
-4. Start the service: `uvicorn app.main:app --reload`
-5. Run tests: `pytest`
+4. Configure the database URL if needed: `export EVALYNX_DATABASE_URL=sqlite:///./evalynx.db`
+5. Apply migrations: `alembic upgrade head`
+6. Start the service: `uvicorn app.main:app --reload`
+7. Run tests: `pytest`
+
+The current Packet 03 worker path uses an in-process queue seam that persists `queued -> running -> terminal` transitions through the database while keeping the implementation lightweight. Redis + RQ remains the target queue stack for later packets.
 
 ## Current Status
 
@@ -93,8 +97,12 @@ The current foundation now includes:
 - contribution guide
 - git and GitHub setup
 - FastAPI service bootstrap
-- configuration scaffold
+- configuration and database settings scaffold
+- Alembic migration support
+- SQLAlchemy-backed `Project` and `Run` persistence
+- project and run API endpoints
+- stubbed queue and worker lifecycle path
 - pytest-based test harness
 - `GET /health`
 
-The next implementation milestone is the run lifecycle vertical slice: initial persistence, run creation flow, queue submission, and the first stubbed asynchronous execution path.
+The next implementation milestone is the first real runner integration: replacing the stub path with `solo-wargame-ai` while preserving the persisted lifecycle surfaces introduced in Packet 03.

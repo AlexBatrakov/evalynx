@@ -70,7 +70,7 @@ The service layer coordinates:
 
 ### Persistence Layer
 
-PostgreSQL is the source of truth for:
+The persistence layer is the source of truth for:
 
 - projects
 - runs
@@ -80,15 +80,19 @@ PostgreSQL is the source of truth for:
 
 Lifecycle state should remain database-backed and queryable rather than hidden inside worker-local execution flow.
 
+Packet 03 introduces SQLAlchemy 2 models and Alembic migrations for the first data-backed slice. SQLite is suitable for local development in the current repository, while PostgreSQL remains the intended MVP deployment target.
+
 ### Queue and Worker
 
-Redis and RQ handle asynchronous execution. Workers are responsible for:
+Workers are responsible for:
 
 - picking up queued runs
 - marking attempts as running
 - invoking a runner adapter
 - persisting terminal results
 - recording failure information
+
+The long-term target remains Redis + RQ. The current vertical slice uses an explicit in-process queue/worker seam so the lifecycle is already separated from the request path without over-expanding early infrastructure work.
 
 ### Runner Boundary
 
@@ -133,7 +137,7 @@ The long-term goal is to make it easy to answer questions such as:
 
 ## Initial API Surface
 
-Planned MVP endpoints:
+Current Packet 03 endpoints:
 
 - `POST /projects`
 - `GET /projects`
@@ -141,8 +145,11 @@ Planned MVP endpoints:
 - `GET /runs`
 - `GET /runs/{id}`
 - `GET /projects/{id}/runs`
-- `POST /runs/{id}/retry`
 - `GET /health`
+
+Planned later MVP endpoint:
+
+- `POST /runs/{id}/retry`
 
 ## Initial Data Model
 
