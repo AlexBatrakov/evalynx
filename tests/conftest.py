@@ -46,7 +46,7 @@ def app(settings: Settings) -> FastAPI:
     shutdown_queue = getattr(background_queue, "shutdown", None)
     if callable(shutdown_queue):
         shutdown_queue()
-    application.state.run_queue = ManualRunQueue(application.state.run_worker.process_run)
+    application.state.run_queue = ManualRunQueue(application.state.run_worker.process_attempt)
     return application
 
 

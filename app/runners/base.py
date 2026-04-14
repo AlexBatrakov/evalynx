@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 
-from app.db.models import Run
+from app.db.models import Run, RunAttempt
 
 
 class RunnerExecutionError(Exception):
@@ -50,5 +50,5 @@ class Runner(Protocol):
     def normalize_config(self, config: Mapping[str, Any]) -> dict[str, Any]:
         ...
 
-    def execute(self, run: Run) -> RunnerResult:
+    def execute(self, run: Run, attempt: RunAttempt) -> RunnerResult:
         ...

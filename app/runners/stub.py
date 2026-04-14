@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from app.db.models import Run
+from app.db.models import Run, RunAttempt
 from app.runners.base import RunnerConfigValidationError, RunnerExecutionError, RunnerResult
 
 
@@ -16,7 +16,7 @@ class StubRunner:
 
         return {str(key): value for key, value in config.items()}
 
-    def execute(self, run: Run) -> RunnerResult:
+    def execute(self, run: Run, attempt: RunAttempt) -> RunnerResult:
         if run.normalized_config.get("should_fail"):
             message = run.normalized_config.get("failure_message", "Stub runner configured to fail.")
             raise RunnerExecutionError(str(message))

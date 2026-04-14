@@ -74,6 +74,7 @@ The persistence layer is the source of truth for:
 
 - projects
 - runs
+- run attempts
 - structured terminal runner results
 
 Lifecycle state should remain database-backed and queryable rather than hidden inside worker-local execution flow.
@@ -89,17 +90,19 @@ Packet 04 extends the `Run` model beyond lifecycle state so a completed run can 
 
 These surfaces are intentionally stored as clear JSON-backed fields on `Run` for the first real runner integration instead of being exploded into several new relational tables too early. SQLite is suitable for local development in the current repository, while PostgreSQL remains the intended MVP deployment target.
 
+Packet 05 adds `RunAttempt` as the minimal execution-history surface. `Run` remains the user-facing logical job and keeps the latest attempt snapshot for easy inspection, while `RunAttempt` preserves the concrete status, timestamps, failure context, and structured results for each execution attempt.
+
 ### Queue and Worker
 
 Workers are responsible for:
 
-- picking up queued runs
+- picking up queued attempts
 - marking attempts as running
 - invoking a runner adapter
 - persisting terminal results from the runner contract
 - recording failure information
 
-The long-term target remains Redis + RQ. The current vertical slice uses an explicit in-process queue/worker seam so the lifecycle is already separated from the request path without over-expanding early infrastructure work.
+The long-term target remains Redis + RQ. The current vertical slice uses an explicit in-process queue/worker seam so the lifecycle is already separated from the request path without over-expanding early infrastructure work. Queue payloads now carry attempt identity, and worker writes are guarded so stale or duplicate attempt execution cannot overwrite the latest run snapshot.
 
 ### Runner Boundary
 
@@ -122,11 +125,20 @@ The intended lifecycle for the MVP is:
 1. receive a run request
 2. validate and normalize config
 3. persist the run as `queued`
-4. enqueue background execution
-5. mark the active attempt as `running`
-6. invoke the selected runner adapter
-7. store summary data, metrics, and artifact references
-8. mark the run as `succeeded` or `failed`
+4. create an initial `RunAttempt`
+5. enqueue background execution for that attempt
+6. mark the active attempt as `running`
+7. invoke the selected runner adapter
+8. store summary data, metrics, and artifact references on both the attempt and the latest run snapshot
+9. mark the run as `succeeded` or `failed`
+
+Retry follows the same model:
+
+1. accept a retry request for a failed run
+2. create a fresh queued `RunAttempt`
+3. clear the latest run snapshot back to queued state
+4. enqueue only the new attempt
+5. preserve prior attempts for diagnosis and auditability
 
 This lifecycle is a product concern, not just an implementation detail. Much of the value of Evalynx comes from making these states explicit and queryable.
 
@@ -152,19 +164,16 @@ The long-term goal is to make it easy to answer questions such as:
 
 ## Initial API Surface
 
-Current Packet 04 endpoints:
+Current Packet 05 endpoints:
 
 - `POST /projects`
 - `GET /projects`
 - `POST /runs`
+- `POST /runs/{id}/retry`
 - `GET /runs`
 - `GET /runs/{id}`
 - `GET /projects/{id}/runs`
 - `GET /health`
-
-Planned later MVP endpoint:
-
-- `POST /runs/{id}/retry`
 
 ## Initial Data Model
 
@@ -175,6 +184,8 @@ The early MVP is expected to revolve around:
 - `RunAttempt`
 - `RunMetric`
 - `RunArtifact`
+
+`RunAttempt` is now the concrete execution-history record. `RunMetric` and `RunArtifact` remain future normalization targets rather than first-pass relational tables.
 
 ## Current Runner Strategy
 

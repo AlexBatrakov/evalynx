@@ -56,8 +56,9 @@ The MVP is centered around one main workflow:
 2. Submit a run with a runner type and config.
 3. Persist the run as `queued`.
 4. Execute the run asynchronously through a worker.
-5. Store terminal state, summary data, metrics, and artifact references.
-6. Inspect the completed or failed run through the API.
+5. Store terminal state, summary data, metrics, and artifact references per execution attempt.
+6. Inspect the latest run state and attempt history through the API.
+7. Retry failed runs without erasing prior failure context.
 
 ## Documentation Map
 
@@ -88,7 +89,7 @@ Setup:
 7. Start the service: `uvicorn app.main:app --reload`
 8. Run tests: `pytest`
 
-The current worker path still uses an in-process queue seam that persists `queued -> running -> terminal` transitions through the database while keeping the implementation lightweight. Redis + RQ remains the target queue stack for later packets.
+The current worker path still uses an in-process queue seam that persists attempt-aware `queued -> running -> terminal` transitions through the database while keeping the implementation lightweight. Retries create a fresh execution attempt and preserve earlier attempt history and artifacts. Redis + RQ remains the target queue stack for later packets.
 
 For the first real runner family, `POST /runs` accepts `runner_type: "solo_wargame"` with a logical config shaped like:
 
@@ -112,7 +113,9 @@ For the first real runner family, `POST /runs` accepts `runner_type: "solo_warga
 }
 ```
 
-Evalynx materializes the upstream request file, allocates the artifact directory, invokes the external CLI through a subprocess adapter, and persists summary, metrics, execution metadata, artifacts, warnings, and structured error details back onto the run record.
+Evalynx materializes the upstream request file, allocates the artifact directory, invokes the external CLI through a subprocess adapter, and persists summary, metrics, execution metadata, artifacts, warnings, and structured error details back onto the run record and its current attempt snapshot.
+
+Failed runs can be retried through `POST /runs/{id}/retry`. Run detail responses keep the latest run snapshot easy to inspect while also exposing bounded attempt history, and `solo_wargame` artifacts are now written into per-attempt directories under each run.
 
 ## Current Status
 
@@ -131,8 +134,10 @@ The current foundation now includes:
 - project and run API endpoints
 - real `solo_wargame` subprocess runner integration
 - structured persisted runner result surfaces on runs
+- attempt-aware execution history on runs
+- retry endpoint and stale-safe worker processing
 - in-process queue and worker lifecycle path
 - pytest-based test harness
 - `GET /health`
 
-The next implementation milestone is lifecycle hardening: adding retry support, attempt-aware execution tracking, and stronger failure diagnostics around the now-real runner path.
+The next implementation milestone is Docker, CI, and MVP polish so the hardened lifecycle path is easier for reviewers to run and evaluate.

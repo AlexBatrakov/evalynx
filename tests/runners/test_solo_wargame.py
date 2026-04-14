@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from app.runners import RunnerConfigValidationError
-from app.db.models import Run
+from app.db.models import Run, RunAttempt
 from app.runners.base import RunnerExecutionError
 from app.runners.solo_wargame import (
     SoloWargameRunner,
@@ -156,9 +156,14 @@ def test_execute_raises_parse_error_for_invalid_json(settings) -> None:
         },
         config_hash="hash",
     )
+    attempt = RunAttempt(
+        id=11,
+        run_id=7,
+        attempt_number=2,
+    )
 
     with pytest.raises(RunnerExecutionError) as exc_info:
-        runner.execute(run)
+        runner.execute(run, attempt)
 
     assert exc_info.value.result_error["kind"] == "result_parse_error"
     assert exc_info.value.result_error["message"].startswith("solo_wargame runner returned invalid JSON:")
@@ -167,11 +172,11 @@ def test_execute_raises_parse_error_for_invalid_json(settings) -> None:
         "-m",
         "solo_wargame_ai.cli.episode_batch_runner",
         "--request-file",
-        str(settings.artifact_root / "run-000007" / "evalynx-request.json"),
+        str(settings.artifact_root / "run-000007" / "attempt-0002" / "evalynx-request.json"),
     ]
     assert exc_info.value.result_error["working_directory"] == str(settings.solo_wargame_repo_path)
     assert exc_info.value.result_error["request_file"] == str(
-        settings.artifact_root / "run-000007" / "evalynx-request.json"
+        settings.artifact_root / "run-000007" / "attempt-0002" / "evalynx-request.json"
     )
     assert exc_info.value.result_error["returncode"] == 0
     assert exc_info.value.result_error["stderr"] is None

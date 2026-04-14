@@ -14,7 +14,7 @@ This roadmap tracks public milestones for Evalynx. It intentionally stays high-l
 - [x] Run lifecycle vertical slice
 - [x] Background worker execution flow
 - [x] First real runner integration
-- [ ] Retry and lifecycle hardening
+- [x] Retry and lifecycle hardening
 - [ ] Docker Compose and CI setup
 - [ ] MVP polish and reviewer onboarding
 
@@ -40,4 +40,4 @@ Potential follow-on areas after the MVP:
 
 ## Current Focus
 
-The next milestone is lifecycle hardening: adding retry support, attempt-aware execution tracking, and stronger failure diagnostics now that the first real runner path is in place.
+The next milestone is Docker Compose, CI setup, and MVP polish so reviewers can run and evaluate the now-hardened lifecycle path with less hidden setup.

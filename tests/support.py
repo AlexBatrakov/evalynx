@@ -6,28 +6,28 @@ from textwrap import dedent
 
 
 class ManualRunQueue:
-    def __init__(self, process_run: Callable[[int], None]) -> None:
-        self._process_run = process_run
-        self.pending_run_ids: list[int] = []
+    def __init__(self, process_attempt: Callable[[int], None]) -> None:
+        self._process_attempt = process_attempt
+        self.pending_attempt_ids: list[int] = []
 
-    def enqueue(self, run_id: int) -> None:
-        self.pending_run_ids.append(run_id)
+    def enqueue(self, attempt_id: int) -> None:
+        self.pending_attempt_ids.append(attempt_id)
 
     def run_next(self) -> int | None:
-        if not self.pending_run_ids:
+        if not self.pending_attempt_ids:
             return None
 
-        run_id = self.pending_run_ids.pop(0)
-        self._process_run(run_id)
-        return run_id
+        attempt_id = self.pending_attempt_ids.pop(0)
+        self._process_attempt(attempt_id)
+        return attempt_id
 
     def run_all(self) -> list[int]:
         processed: list[int] = []
 
-        while self.pending_run_ids:
-            run_id = self.run_next()
-            if run_id is not None:
-                processed.append(run_id)
+        while self.pending_attempt_ids:
+            attempt_id = self.run_next()
+            if attempt_id is not None:
+                processed.append(attempt_id)
 
         return processed
 

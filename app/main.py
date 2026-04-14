@@ -24,7 +24,7 @@ def create_app(
         session_factory=session_factory,
         runner_registry=runner_registry,
     )
-    active_run_queue = run_queue or BackgroundRunQueue(run_worker.process_run)
+    active_run_queue = run_queue or BackgroundRunQueue(run_worker.process_attempt)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
