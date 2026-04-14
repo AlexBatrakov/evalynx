@@ -10,11 +10,19 @@ branch_labels = None
 depends_on = None
 
 
+RUN_STATUS_NAMES = {
+    "QUEUED",
+    "RUNNING",
+    "SUCCEEDED",
+    "FAILED",
+}
+
+
 run_status = sa.Enum(
-    "queued",
-    "running",
-    "succeeded",
-    "failed",
+    "QUEUED",
+    "RUNNING",
+    "SUCCEEDED",
+    "FAILED",
     name="run_status",
     native_enum=False,
 )
@@ -22,7 +30,7 @@ run_status = sa.Enum(
 runs_table = sa.table(
     "runs",
     sa.column("id", sa.Integer()),
-    sa.column("status", run_status),
+    sa.column("status", sa.String()),
     sa.column("summary", sa.JSON()),
     sa.column("result_metrics", sa.JSON()),
     sa.column("result_execution", sa.JSON()),
@@ -41,7 +49,7 @@ run_attempts_table = sa.table(
     sa.column("id", sa.Integer()),
     sa.column("run_id", sa.Integer()),
     sa.column("attempt_number", sa.Integer()),
-    sa.column("status", run_status),
+    sa.column("status", sa.String()),
     sa.column("summary", sa.JSON()),
     sa.column("result_metrics", sa.JSON()),
     sa.column("result_execution", sa.JSON()),
@@ -53,6 +61,15 @@ run_attempts_table = sa.table(
     sa.column("started_at", sa.DateTime(timezone=True)),
     sa.column("finished_at", sa.DateTime(timezone=True)),
 )
+
+
+def _normalize_run_status(value: object) -> str:
+    if isinstance(value, str):
+        normalized = value.strip().upper()
+        if normalized in RUN_STATUS_NAMES:
+            return normalized
+
+    raise ValueError(f"Unexpected run status value during migration: {value!r}")
 
 
 def upgrade() -> None:
@@ -110,7 +127,7 @@ def upgrade() -> None:
             run_attempts_table.insert().values(
                 run_id=run["id"],
                 attempt_number=1,
-                status=run["status"],
+                status=_normalize_run_status(run["status"]),
                 summary=run["summary"],
                 result_metrics=run["result_metrics"],
                 result_execution=run["result_execution"],
@@ -123,7 +140,8 @@ def upgrade() -> None:
                 finished_at=run["finished_at"],
             )
         )
-        attempt_id = insert_result.inserted_primary_key[0]
+        inserted_primary_key = insert_result.inserted_primary_key
+        attempt_id = inserted_primary_key[0] if inserted_primary_key else insert_result.lastrowid
         connection.execute(
             runs_table.update()
             .where(runs_table.c.id == run["id"])
