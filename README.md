@@ -67,16 +67,12 @@ The MVP is centered around one main workflow:
 - [Public roadmap](ROADMAP.md)
 - [Contribution guide](CONTRIBUTING.md)
 
-## Local Development
+## Run It Locally
 
-Evalynx now includes a reviewer-friendly Docker Compose stack around:
+There are two intended local paths:
 
-- `api`
-- `worker`
-- `postgres`
-- `redis`
-
-The default Compose demo path uses the built-in `stub` runner so a reviewer can prove the asynchronous lifecycle without any external checkout. The first real external runner integration remains `solo_wargame`, and it can still be exercised from a host-based app/worker process against the same Dockerized infrastructure.
+- Reviewer quickstart: Docker Compose plus the built-in `stub` runner. This is the fastest way to validate the asynchronous lifecycle with no external checkout.
+- Host development with the real runner: a local Python environment plus the same Dockerized PostgreSQL and Redis services, with a local checkout of `solo-wargame-ai`.
 
 ### Reviewer Quickstart
 
@@ -91,6 +87,8 @@ Setup:
 3. Apply migrations: `docker compose run --rm migrate`
 4. Start the API and worker: `docker compose up -d api worker`
 5. Confirm the API is healthy: `curl http://localhost:8000/health`
+
+If you want a clean demo state, run `docker compose down -v` before repeating the example requests below. The sample IDs assume a fresh database; otherwise, use the IDs returned by your own API responses.
 
 Create a project:
 
@@ -139,6 +137,13 @@ curl http://localhost:8000/runs/2
 docker compose logs -f worker
 ```
 
+Expected reviewer outcomes:
+
+- the health endpoint returns `status: "ok"`
+- the first stub run reaches `succeeded` and persists a summary
+- the second stub run reaches `failed` with a stored failure message
+- retrying the failed run increments `attempt_count` and `current_attempt_number`
+
 Artifacts written by the stack are stored under `./artifacts`.
 
 Shut the stack down with:
@@ -159,7 +164,7 @@ Requirements:
 
 - Python 3.11+
 - Docker Desktop or Docker Engine with Compose support
-- a local checkout of [`solo-wargame-ai`](https://github.com/openai/solo-wargame-ai) when you want the real runner path
+- a local checkout of [`solo-wargame-ai`](https://github.com/AlexBatrakov/solo-wargame-ai) when you want the real runner path
 
 Setup:
 
@@ -177,7 +182,7 @@ Setup:
 7. Apply migrations: `alembic upgrade head`
 8. Start the API: `uvicorn app.main:app --reload`
 9. Start the worker in a second shell: `python -m app.workers.entrypoint`
-10. Run tests: `pytest`
+10. Run tests: `python -m pytest`
 
 For the first real runner family, `POST /runs` accepts `runner_type: "solo_wargame"` with a logical config shaped like:
 
@@ -207,27 +212,15 @@ Failed runs can be retried through `POST /runs/{id}/retry`. Run detail responses
 
 ## Current Status
 
-The repository is in early development.
+Evalynx is at a finished MVP milestone.
 
-The current foundation now includes:
+A reviewer can now:
 
-- project framing
-- architecture and roadmap docs
-- contribution guide
-- git and GitHub setup
-- FastAPI service bootstrap
-- configuration and database settings scaffold
-- Alembic migration support
-- SQLAlchemy-backed `Project` and `Run` persistence
-- project and run API endpoints
-- real `solo_wargame` subprocess runner integration
-- structured persisted runner result surfaces on runs
-- attempt-aware execution history on runs
-- retry endpoint and stale-safe worker processing
-- Redis + RQ queue and worker lifecycle path for normal runtime
-- Dockerfile, Docker Compose stack, and explicit migration bootstrap flow
-- GitHub Actions CI with unit/integration tests plus a bounded Compose smoke path
-- pytest-based test harness
-- `GET /health`
+- run the Docker Compose stack locally
+- create a project and submit runs through the API
+- observe asynchronous execution through Redis + RQ worker processing
+- inspect persisted summaries, metrics, artifacts, and attempt history
+- retry failed runs without overwriting prior failure context
+- exercise the real `solo_wargame` integration from a host-based app and worker when the external repository is available
 
-The next implementation milestone is a final MVP review and positioning pass.
+The public docs, Compose workflow, and CI checks are aligned around that reviewer-facing backend story.
