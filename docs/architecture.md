@@ -74,13 +74,20 @@ The persistence layer is the source of truth for:
 
 - projects
 - runs
-- run attempts
-- metrics
-- artifact references
+- structured terminal runner results
 
 Lifecycle state should remain database-backed and queryable rather than hidden inside worker-local execution flow.
 
-Packet 03 introduces SQLAlchemy 2 models and Alembic migrations for the first data-backed slice. SQLite is suitable for local development in the current repository, while PostgreSQL remains the intended MVP deployment target.
+Packet 04 extends the `Run` model beyond lifecycle state so a completed run can retain:
+
+- a compact summary
+- result metrics
+- execution metadata
+- artifact manifests
+- warnings
+- structured error details
+
+These surfaces are intentionally stored as clear JSON-backed fields on `Run` for the first real runner integration instead of being exploded into several new relational tables too early. SQLite is suitable for local development in the current repository, while PostgreSQL remains the intended MVP deployment target.
 
 ### Queue and Worker
 
@@ -89,7 +96,7 @@ Workers are responsible for:
 - picking up queued runs
 - marking attempts as running
 - invoking a runner adapter
-- persisting terminal results
+- persisting terminal results from the runner contract
 - recording failure information
 
 The long-term target remains Redis + RQ. The current vertical slice uses an explicit in-process queue/worker seam so the lifecycle is already separated from the request path without over-expanding early infrastructure work.
@@ -99,6 +106,14 @@ The long-term target remains Redis + RQ. The current vertical slice uses an expl
 Evalynx integrates with external systems through runner adapters.
 
 The default MVP preference is an adapter plus subprocess boundary rather than deeply embedding external project internals into the application runtime. This keeps the integration surface explicit, reduces coupling, and makes reproducibility metadata easier to capture.
+
+The current real adapter is `solo_wargame`, which:
+
+- validates and normalizes a narrower Evalynx-side config
+- materializes an upstream `episode_batch` request file
+- allocates an Evalynx-managed artifact directory
+- invokes `solo_wargame_ai.cli.episode_batch_runner --request-file ...`
+- treats the upstream stdout JSON payload as the source of truth for structured result persistence
 
 ## Run Lifecycle
 
@@ -137,7 +152,7 @@ The long-term goal is to make it easy to answer questions such as:
 
 ## Initial API Surface
 
-Current Packet 03 endpoints:
+Current Packet 04 endpoints:
 
 - `POST /projects`
 - `GET /projects`
@@ -161,11 +176,13 @@ The early MVP is expected to revolve around:
 - `RunMetric`
 - `RunArtifact`
 
-## Initial Runner Strategy
+## Current Runner Strategy
 
-The first real runner target is `solo-wargame-ai`.
+The first real runner integration is `solo-wargame-ai` through its bounded `episode_batch` JSON contract.
 
-It is a good first integration because it already has reproducible execution surfaces and does not depend on private personal data. A wearable analytics public-demo path remains a strong candidate for a later second runner.
+It is a good first integration because it already has reproducible execution surfaces and does not depend on private personal data. The Evalynx-side config intentionally stays narrower than the full transport payload so clients provide logical inputs such as mission path, builtin policy, seed spec, and whether episode rows should be written, while Evalynx fills transport-only fields such as schema version, operation, and artifact directory.
+
+A wearable analytics public-demo path remains a strong candidate for a later second runner.
 
 ## Planned Code Layout
 

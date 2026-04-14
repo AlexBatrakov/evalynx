@@ -13,7 +13,7 @@ This roadmap tracks public milestones for Evalynx. It intentionally stays high-l
 - [x] FastAPI service bootstrap
 - [x] Run lifecycle vertical slice
 - [x] Background worker execution flow
-- [ ] First real runner integration
+- [x] First real runner integration
 - [ ] Retry and lifecycle hardening
 - [ ] Docker Compose and CI setup
 - [ ] MVP polish and reviewer onboarding
@@ -40,4 +40,4 @@ Potential follow-on areas after the MVP:
 
 ## Current Focus
 
-The next milestone is the first real runner integration: replacing the stub lifecycle path with `solo-wargame-ai` while keeping the persisted run flow inspectable and reproducible.
+The next milestone is lifecycle hardening: adding retry support, attempt-aware execution tracking, and stronger failure diagnostics now that the first real runner path is in place.

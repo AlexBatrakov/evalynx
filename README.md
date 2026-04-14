@@ -46,7 +46,7 @@ The initial MVP is intentionally narrow and aims to prove one strong vertical sl
 - stored summaries, metrics, artifacts, and failure information
 - retry support for failed runs
 
-The first planned real runner is `solo-wargame-ai`, chosen because it already has strong reproducibility surfaces and does not depend on private personal data.
+The first integrated real runner is `solo-wargame-ai`, chosen because it already has strong reproducibility surfaces and does not depend on private personal data.
 
 ## Planned User Flow
 
@@ -68,7 +68,7 @@ The MVP is centered around one main workflow:
 
 ## Local Development
 
-Evalynx now includes the first persisted run lifecycle slice with SQLAlchemy/Alembic-backed storage and a stub worker execution path.
+Evalynx now includes the first real external runner integration through the versioned `solo-wargame-ai` `episode_batch` contract while still keeping the queue seam lightweight for local development.
 
 Requirements:
 
@@ -80,11 +80,39 @@ Setup:
 2. Activate it: `source .venv/bin/activate`
 3. Install dependencies: `pip install -e '.[dev]'`
 4. Configure the database URL if needed: `export EVALYNX_DATABASE_URL=sqlite:///./evalynx.db`
-5. Apply migrations: `alembic upgrade head`
-6. Start the service: `uvicorn app.main:app --reload`
-7. Run tests: `pytest`
+5. Point Evalynx at a local `solo-wargame-ai` checkout:
+   - `export EVALYNX_SOLO_WARGAME_REPO_PATH=/absolute/path/to/solo-wargame-ai`
+   - `export EVALYNX_SOLO_WARGAME_PYTHON_COMMAND=/absolute/path/to/solo-wargame-ai/.venv/bin/python`
+   - `export EVALYNX_ARTIFACT_ROOT=./artifacts`
+6. Apply migrations: `alembic upgrade head`
+7. Start the service: `uvicorn app.main:app --reload`
+8. Run tests: `pytest`
 
-The current Packet 03 worker path uses an in-process queue seam that persists `queued -> running -> terminal` transitions through the database while keeping the implementation lightweight. Redis + RQ remains the target queue stack for later packets.
+The current worker path still uses an in-process queue seam that persists `queued -> running -> terminal` transitions through the database while keeping the implementation lightweight. Redis + RQ remains the target queue stack for later packets.
+
+For the first real runner family, `POST /runs` accepts `runner_type: "solo_wargame"` with a logical config shaped like:
+
+```json
+{
+  "project_id": 1,
+  "runner_type": "solo_wargame",
+  "config": {
+    "mission_path": "configs/missions/mission_01_secure_the_woods_1.toml",
+    "policy": {
+      "kind": "builtin",
+      "name": "heuristic"
+    },
+    "seed_spec": {
+      "kind": "range",
+      "start": 0,
+      "stop": 4
+    },
+    "write_episode_rows": true
+  }
+}
+```
+
+Evalynx materializes the upstream request file, allocates the artifact directory, invokes the external CLI through a subprocess adapter, and persists summary, metrics, execution metadata, artifacts, warnings, and structured error details back onto the run record.
 
 ## Current Status
 
@@ -101,8 +129,10 @@ The current foundation now includes:
 - Alembic migration support
 - SQLAlchemy-backed `Project` and `Run` persistence
 - project and run API endpoints
-- stubbed queue and worker lifecycle path
+- real `solo_wargame` subprocess runner integration
+- structured persisted runner result surfaces on runs
+- in-process queue and worker lifecycle path
 - pytest-based test harness
 - `GET /health`
 
-The next implementation milestone is the first real runner integration: replacing the stub path with `solo-wargame-ai` while preserving the persisted lifecycle surfaces introduced in Packet 03.
+The next implementation milestone is lifecycle hardening: adding retry support, attempt-aware execution tracking, and stronger failure diagnostics around the now-real runner path.
