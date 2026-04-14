@@ -44,33 +44,56 @@ jobs:
       - name: Compose smoke test
         run: |
           python - <<'PY'
+          import http.client
           import json
           import time
           import urllib.error
           import urllib.request
 
           BASE_URL = "http://127.0.0.1:8000"
+          TRANSIENT_NETWORK_ERRORS = (
+              ConnectionError,
+              TimeoutError,
+              urllib.error.URLError,
+              http.client.RemoteDisconnected,
+          )
 
 
-          def request(path: str, *, method: str = "GET", payload: dict | None = None) -> dict:
+          def request(
+              path: str,
+              *,
+              method: str = "GET",
+              payload: dict | None = None,
+              attempts: int = 3,
+              delay_sec: float = 1.0,
+          ) -> dict:
               data = None if payload is None else json.dumps(payload).encode("utf-8")
-              req = urllib.request.Request(
-                  BASE_URL + path,
-                  data=data,
-                  method=method,
-                  headers={"Content-Type": "application/json"},
-              )
-              with urllib.request.urlopen(req) as response:
-                  body = response.read().decode("utf-8")
-                  return json.loads(body) if body else {}
+
+              for attempt in range(attempts):
+                  req = urllib.request.Request(
+                      BASE_URL + path,
+                      data=data,
+                      method=method,
+                      headers={"Content-Type": "application/json"},
+                  )
+                  try:
+                      with urllib.request.urlopen(req, timeout=10) as response:
+                          body = response.read().decode("utf-8")
+                          return json.loads(body) if body else {}
+                  except TRANSIENT_NETWORK_ERRORS:
+                      if attempt == attempts - 1:
+                          raise
+                      time.sleep(delay_sec)
+
+              raise RuntimeError(f"Request to {path!r} exhausted retries without returning a response.")
 
 
           for _ in range(30):
               try:
-                  health = request("/health")
+                  health = request("/health", attempts=1)
                   if health["status"] == "ok":
                       break
-              except urllib.error.URLError:
+              except TRANSIENT_NETWORK_ERRORS:
                   time.sleep(2)
           else:
               raise SystemExit("API did not become healthy in time")
