@@ -69,27 +69,115 @@ The MVP is centered around one main workflow:
 
 ## Local Development
 
-Evalynx now includes the first real external runner integration through the versioned `solo-wargame-ai` `episode_batch` contract while still keeping the queue seam lightweight for local development.
+Evalynx now includes a reviewer-friendly Docker Compose stack around:
+
+- `api`
+- `worker`
+- `postgres`
+- `redis`
+
+The default Compose demo path uses the built-in `stub` runner so a reviewer can prove the asynchronous lifecycle without any external checkout. The first real external runner integration remains `solo_wargame`, and it can still be exercised from a host-based app/worker process against the same Dockerized infrastructure.
+
+### Reviewer Quickstart
+
+Requirements:
+
+- Docker Desktop or Docker Engine with Compose support
+
+Setup:
+
+1. Copy the example environment if you want a local `.env`: `cp .env.example .env`
+2. Start infrastructure: `docker compose up -d postgres redis`
+3. Apply migrations: `docker compose run --rm migrate`
+4. Start the API and worker: `docker compose up -d api worker`
+5. Confirm the API is healthy: `curl http://localhost:8000/health`
+
+Create a project:
+
+```bash
+curl -X POST http://localhost:8000/projects \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Reviewer Demo"}'
+```
+
+Submit a successful async stub run:
+
+```bash
+curl -X POST http://localhost:8000/runs \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "project_id": 1,
+    "runner_type": "stub",
+    "config": {
+      "scenario": "compose-demo-success"
+    }
+  }'
+```
+
+Submit a failing run that can be retried:
+
+```bash
+curl -X POST http://localhost:8000/runs \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "project_id": 1,
+    "runner_type": "stub",
+    "config": {
+      "should_fail": true,
+      "failure_message": "Reviewer demo failure"
+    }
+  }'
+```
+
+Inspect the lifecycle and retry the failed run:
+
+```bash
+curl http://localhost:8000/runs/1
+curl http://localhost:8000/runs/2
+curl -X POST http://localhost:8000/runs/2/retry
+curl http://localhost:8000/runs/2
+docker compose logs -f worker
+```
+
+Artifacts written by the stack are stored under `./artifacts`.
+
+Shut the stack down with:
+
+```bash
+docker compose down
+```
+
+If you also want to remove the PostgreSQL volume:
+
+```bash
+docker compose down -v
+```
+
+### Host Development With The Real Runner
 
 Requirements:
 
 - Python 3.11+
+- Docker Desktop or Docker Engine with Compose support
+- a local checkout of [`solo-wargame-ai`](https://github.com/openai/solo-wargame-ai) when you want the real runner path
 
 Setup:
 
-1. Create a virtual environment: `python -m venv .venv`
-2. Activate it: `source .venv/bin/activate`
-3. Install dependencies: `pip install -e '.[dev]'`
-4. Configure the database URL if needed: `export EVALYNX_DATABASE_URL=sqlite:///./evalynx.db`
-5. Point Evalynx at a local `solo-wargame-ai` checkout:
-   - `export EVALYNX_SOLO_WARGAME_REPO_PATH=/absolute/path/to/solo-wargame-ai`
-   - `export EVALYNX_SOLO_WARGAME_PYTHON_COMMAND=/absolute/path/to/solo-wargame-ai/.venv/bin/python`
-   - `export EVALYNX_ARTIFACT_ROOT=./artifacts`
-6. Apply migrations: `alembic upgrade head`
-7. Start the service: `uvicorn app.main:app --reload`
-8. Run tests: `pytest`
-
-The current worker path still uses an in-process queue seam that persists attempt-aware `queued -> running -> terminal` transitions through the database while keeping the implementation lightweight. Retries create a fresh execution attempt and preserve earlier attempt history and artifacts. Redis + RQ remains the target queue stack for later packets.
+1. Copy the environment template: `cp .env.example .env`
+2. Start PostgreSQL and Redis: `docker compose up -d postgres redis`
+3. Create a virtual environment: `python -m venv .venv`
+4. Activate it: `source .venv/bin/activate`
+5. Install dependencies: `pip install -e '.[dev]'`
+6. Export or edit the required env vars:
+   - `EVALYNX_DATABASE_URL=postgresql+psycopg://evalynx:evalynx@localhost:5432/evalynx`
+   - `EVALYNX_REDIS_URL=redis://localhost:6379/0`
+   - `EVALYNX_SOLO_WARGAME_REPO_PATH=/absolute/path/to/solo-wargame-ai`
+   - `EVALYNX_SOLO_WARGAME_PYTHON_COMMAND=/absolute/path/to/solo-wargame-ai/.venv/bin/python`
+   - `EVALYNX_ARTIFACT_ROOT=./artifacts`
+7. Apply migrations: `alembic upgrade head`
+8. Start the API: `uvicorn app.main:app --reload`
+9. Start the worker in a second shell: `python -m app.workers.entrypoint`
+10. Run tests: `pytest`
 
 For the first real runner family, `POST /runs` accepts `runner_type: "solo_wargame"` with a logical config shaped like:
 
@@ -136,8 +224,10 @@ The current foundation now includes:
 - structured persisted runner result surfaces on runs
 - attempt-aware execution history on runs
 - retry endpoint and stale-safe worker processing
-- in-process queue and worker lifecycle path
+- Redis + RQ queue and worker lifecycle path for normal runtime
+- Dockerfile, Docker Compose stack, and explicit migration bootstrap flow
+- GitHub Actions CI with unit/integration tests plus a bounded Compose smoke path
 - pytest-based test harness
 - `GET /health`
 
-The next implementation milestone is Docker, CI, and MVP polish so the hardened lifecycle path is easier for reviewers to run and evaluate.
+The next implementation milestone is a final MVP review and positioning pass.

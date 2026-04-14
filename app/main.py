@@ -6,9 +6,8 @@ from fastapi import FastAPI
 
 from app.api.router import api_router
 from app.core.config import Settings, get_settings
-from app.db import create_session_factory, create_sqlalchemy_engine
-from app.runners import build_runner_registry
-from app.workers import BackgroundRunQueue, RunQueue, RunWorker
+from app.runtime import build_runtime_resources
+from app.workers import RunQueue, build_default_run_queue
 
 
 def create_app(
@@ -17,14 +16,8 @@ def create_app(
     run_queue: RunQueue | None = None,
 ) -> FastAPI:
     active_settings = settings or get_settings()
-    engine = create_sqlalchemy_engine(active_settings.database_url)
-    session_factory = create_session_factory(engine)
-    runner_registry = build_runner_registry(active_settings)
-    run_worker = RunWorker(
-        session_factory=session_factory,
-        runner_registry=runner_registry,
-    )
-    active_run_queue = run_queue or BackgroundRunQueue(run_worker.process_attempt)
+    runtime = build_runtime_resources(active_settings)
+    active_run_queue = run_queue or build_default_run_queue(active_settings)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -34,17 +27,17 @@ def create_app(
             shutdown_queue = getattr(app.state.run_queue, "shutdown", None)
             if callable(shutdown_queue):
                 shutdown_queue()
-            engine.dispose()
+            runtime.engine.dispose()
 
     app = FastAPI(
         title=active_settings.app_name,
         debug=active_settings.debug,
         lifespan=lifespan,
     )
-    app.state.engine = engine
-    app.state.session_factory = session_factory
-    app.state.runner_registry = runner_registry
-    app.state.run_worker = run_worker
+    app.state.engine = runtime.engine
+    app.state.session_factory = runtime.session_factory
+    app.state.runner_registry = runtime.runner_registry
+    app.state.run_worker = runtime.run_worker
     app.state.run_queue = active_run_queue
     app.include_router(api_router, prefix=active_settings.api_prefix)
 

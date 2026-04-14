@@ -1,0 +1,110 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-evalynx}
+      POSTGRES_USER: ${POSTGRES_USER:-evalynx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-evalynx}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "6379:6379"
+
+  migrate:
+    build:
+      context: .
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      EVALYNX_APP_NAME: ${EVALYNX_APP_NAME:-Evalynx}
+      EVALYNX_ENV: ${EVALYNX_ENV:-development}
+      EVALYNX_DEBUG: ${EVALYNX_DEBUG:-false}
+      EVALYNX_API_PREFIX: ${EVALYNX_API_PREFIX:-}
+      EVALYNX_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-evalynx}:${POSTGRES_PASSWORD:-evalynx}@postgres:5432/${POSTGRES_DB:-evalynx}
+      EVALYNX_REDIS_URL: redis://redis:6379/0
+      EVALYNX_RQ_QUEUE_NAME: ${EVALYNX_RQ_QUEUE_NAME:-evalynx-runs}
+      EVALYNX_RQ_JOB_TIMEOUT: ${EVALYNX_RQ_JOB_TIMEOUT:-600}
+      EVALYNX_SOLO_WARGAME_REPO_PATH: ${EVALYNX_SOLO_WARGAME_REPO_PATH:-}
+      EVALYNX_SOLO_WARGAME_PYTHON_COMMAND: ${EVALYNX_SOLO_WARGAME_PYTHON_COMMAND:-python}
+      EVALYNX_ARTIFACT_ROOT: /app/artifacts
+    volumes:
+      - ./artifacts:/app/artifacts
+
+  api:
+    build:
+      context: .
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      EVALYNX_APP_NAME: ${EVALYNX_APP_NAME:-Evalynx}
+      EVALYNX_ENV: ${EVALYNX_ENV:-development}
+      EVALYNX_DEBUG: ${EVALYNX_DEBUG:-false}
+      EVALYNX_API_PREFIX: ${EVALYNX_API_PREFIX:-}
+      EVALYNX_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-evalynx}:${POSTGRES_PASSWORD:-evalynx}@postgres:5432/${POSTGRES_DB:-evalynx}
+      EVALYNX_REDIS_URL: redis://redis:6379/0
+      EVALYNX_RQ_QUEUE_NAME: ${EVALYNX_RQ_QUEUE_NAME:-evalynx-runs}
+      EVALYNX_RQ_JOB_TIMEOUT: ${EVALYNX_RQ_JOB_TIMEOUT:-600}
+      EVALYNX_SOLO_WARGAME_REPO_PATH: ${EVALYNX_SOLO_WARGAME_REPO_PATH:-}
+      EVALYNX_SOLO_WARGAME_PYTHON_COMMAND: ${EVALYNX_SOLO_WARGAME_PYTHON_COMMAND:-python}
+      EVALYNX_ARTIFACT_ROOT: /app/artifacts
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')\"",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./artifacts:/app/artifacts
+
+  worker:
+    build:
+      context: .
+    command: ["python", "-m", "app.workers.entrypoint"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      EVALYNX_APP_NAME: ${EVALYNX_APP_NAME:-Evalynx}
+      EVALYNX_ENV: ${EVALYNX_ENV:-development}
+      EVALYNX_DEBUG: ${EVALYNX_DEBUG:-false}
+      EVALYNX_API_PREFIX: ${EVALYNX_API_PREFIX:-}
+      EVALYNX_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-evalynx}:${POSTGRES_PASSWORD:-evalynx}@postgres:5432/${POSTGRES_DB:-evalynx}
+      EVALYNX_REDIS_URL: redis://redis:6379/0
+      EVALYNX_RQ_QUEUE_NAME: ${EVALYNX_RQ_QUEUE_NAME:-evalynx-runs}
+      EVALYNX_RQ_JOB_TIMEOUT: ${EVALYNX_RQ_JOB_TIMEOUT:-600}
+      EVALYNX_SOLO_WARGAME_REPO_PATH: ${EVALYNX_SOLO_WARGAME_REPO_PATH:-}
+      EVALYNX_SOLO_WARGAME_PYTHON_COMMAND: ${EVALYNX_SOLO_WARGAME_PYTHON_COMMAND:-python}
+      EVALYNX_ARTIFACT_ROOT: /app/artifacts
+    volumes:
+      - ./artifacts:/app/artifacts
+
+volumes:
+  postgres-data:

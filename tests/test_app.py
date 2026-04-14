@@ -1,8 +1,10 @@
 from app.core.config import Settings
 from app.main import create_app
+from tests.support import ManualRunQueue
 
 
 def test_create_app_applies_settings_to_metadata() -> None:
+    run_queue = ManualRunQueue(lambda attempt_id: None)
     app = create_app(
         Settings(
             app_name="Evalynx Local",
@@ -10,7 +12,8 @@ def test_create_app_applies_settings_to_metadata() -> None:
             debug=True,
             api_prefix="/api",
             database_url="sqlite:///./test-app.db",
-        )
+        ),
+        run_queue=run_queue,
     )
 
     route_paths = {route.path for route in app.routes}

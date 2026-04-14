@@ -1,0 +1,16 @@
+.git
+.github
+.project_local
+.pytest_cache
+.venv
+__pycache__
+*.py[cod]
+*.db
+*.sqlite3
+*.egg-info
+.DS_Store
+artifacts
+build
+dist
+evalynx.db
+tests
