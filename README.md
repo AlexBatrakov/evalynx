@@ -34,6 +34,25 @@ Evalynx is designed as a backend portfolio project, with emphasis on:
 - integration with external systems through explicit adapters
 - reproducibility-focused backend engineering
 
+## Tech Stack
+
+- FastAPI
+- SQLAlchemy + Alembic
+- PostgreSQL
+- Redis + RQ
+- Docker Compose
+- GitHub Actions
+
+## Backend Signals
+
+The strongest backend signals in this MVP are:
+
+- explicit separation between a logical `Run` and concrete `RunAttempt` records
+- asynchronous execution through Redis + RQ with a dedicated worker process
+- subprocess-based runner adapters for bounded integration with external systems
+- structured persistence of summaries, metrics, artifacts, warnings, errors, and reproducibility metadata
+- retry semantics that preserve prior failure context instead of overwriting it
+
 ## MVP Scope
 
 The initial MVP is intentionally narrow and aims to prove one strong vertical slice:
@@ -73,6 +92,8 @@ There are two intended local paths:
 
 - Reviewer quickstart: Docker Compose plus the built-in `stub` runner. This is the fastest way to validate the asynchronous lifecycle with no external checkout.
 - Host development with the real runner: a local Python environment plus the same Dockerized PostgreSQL and Redis services, with a local checkout of `solo-wargame-ai`.
+
+If you want the fastest path to understanding the project, start with the reviewer quickstart below. It proves the queue, worker, persistence, retry, and lifecycle story without needing any external repository.
 
 ### Reviewer Quickstart
 
