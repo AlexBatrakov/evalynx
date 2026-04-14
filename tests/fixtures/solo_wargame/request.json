@@ -1,0 +1,16 @@
+{
+  "schema_version": "solo_wargame_runner_v1",
+  "operation": "episode_batch",
+  "mission_path": "configs/missions/mission_01_secure_the_woods_1.toml",
+  "policy": {
+    "kind": "builtin",
+    "name": "heuristic"
+  },
+  "seed_spec": {
+    "kind": "range",
+    "start": 0,
+    "stop": 4
+  },
+  "artifact_dir": "outputs/evalynx/episode_batch_run_001",
+  "write_episode_rows": true
+}

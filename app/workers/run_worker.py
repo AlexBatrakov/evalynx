@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.db.models import Run, RunStatus, utcnow
-from app.runners.base import Runner, RunnerExecutionError
+from app.runners.base import Runner, RunnerExecutionError, RunnerResult
 
 
 class RunWorker:
@@ -26,10 +26,17 @@ class RunWorker:
 
             runner = self._runner_registry.get(run.runner_type)
             if runner is None:
-                self._mark_failed(
+                self._persist_terminal_result(
                     session,
                     run,
-                    f"Runner type '{run.runner_type}' is not available in the worker.",
+                    RunnerResult(
+                        status="failed",
+                        failure_message=f"Runner type '{run.runner_type}' is not available in the worker.",
+                        result_error={
+                            "kind": "worker_runner_missing",
+                            "message": f"Runner type '{run.runner_type}' is not available in the worker.",
+                        },
+                    ),
                 )
                 return
 
@@ -41,21 +48,39 @@ class RunWorker:
             try:
                 result = runner.execute(run)
             except RunnerExecutionError as exc:
-                self._mark_failed(session, run, str(exc))
-                return
+                result = RunnerResult(
+                    status="failed",
+                    summary=exc.summary,
+                    failure_message=str(exc),
+                    result_metrics=exc.result_metrics,
+                    result_execution=exc.result_execution,
+                    result_artifacts=exc.result_artifacts,
+                    result_warnings=exc.result_warnings,
+                    result_error=exc.result_error or {
+                        "kind": "runner_execution_error",
+                        "message": str(exc),
+                    },
+                )
             except Exception as exc:  # pragma: no cover - defensive guard
-                self._mark_failed(session, run, f"Unhandled worker error: {exc}")
-                return
+                result = RunnerResult(
+                    status="failed",
+                    failure_message=f"Unhandled worker error: {exc}",
+                    result_error={
+                        "kind": "unhandled_worker_error",
+                        "message": f"Unhandled worker error: {exc}",
+                    },
+                )
 
-            run.status = RunStatus.SUCCEEDED
-            run.summary = result.summary
-            run.failure_message = None
-            run.finished_at = utcnow()
-            session.commit()
+            self._persist_terminal_result(session, run, result)
 
-    def _mark_failed(self, session: Session, run: Run, message: str) -> None:
-        run.status = RunStatus.FAILED
-        run.failure_message = message
-        run.summary = None
+    def _persist_terminal_result(self, session: Session, run: Run, result: RunnerResult) -> None:
+        run.status = RunStatus.SUCCEEDED if result.status == "succeeded" else RunStatus.FAILED
+        run.summary = result.summary
+        run.result_metrics = result.result_metrics
+        run.result_execution = result.result_execution
+        run.result_artifacts = list(result.result_artifacts)
+        run.result_warnings = list(result.result_warnings)
+        run.result_error = result.result_error
+        run.failure_message = result.failure_message
         run.finished_at = utcnow()
         session.commit()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from pathlib import Path
+import sys
 
 import pytest
 from alembic import command
@@ -11,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.core.config import Settings
 from app.main import create_app
-from tests.support import ManualRunQueue
+from tests.support import ManualRunQueue, create_fake_solo_wargame_repo
 
 
 def _apply_migrations(database_url: str) -> None:
@@ -25,11 +26,15 @@ def _apply_migrations(database_url: str) -> None:
 @pytest.fixture
 def settings(tmp_path: Path) -> Settings:
     database_path = tmp_path / "evalynx-test.db"
+    solo_wargame_repo_path = create_fake_solo_wargame_repo(tmp_path / "solo-wargame-ai")
     return Settings(
         app_name="Evalynx Test",
         environment="test",
         debug=False,
         database_url=f"sqlite:///{database_path}",
+        solo_wargame_repo_path=solo_wargame_repo_path,
+        solo_wargame_python_command=sys.executable,
+        artifact_root=tmp_path / "artifacts",
     )
 
 

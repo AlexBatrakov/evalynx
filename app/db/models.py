@@ -54,6 +54,11 @@ class Run(Base):
     normalized_config: Mapped[dict[str, Any]] = mapped_column(JSON(), nullable=False)
     config_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     summary: Mapped[dict[str, Any] | None] = mapped_column(JSON(), nullable=True)
+    result_metrics: Mapped[dict[str, Any] | None] = mapped_column(JSON(), nullable=True)
+    result_execution: Mapped[dict[str, Any] | None] = mapped_column(JSON(), nullable=True)
+    result_artifacts: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON(), nullable=True)
+    result_warnings: Mapped[list[str] | None] = mapped_column(JSON(), nullable=True)
+    result_error: Mapped[dict[str, Any] | None] = mapped_column(JSON(), nullable=True)
     failure_message: Mapped[str | None] = mapped_column(Text(), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

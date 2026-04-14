@@ -25,6 +25,11 @@ class RunRead(BaseModel):
     normalized_config: dict[str, Any]
     config_hash: str
     summary: dict[str, Any] | None
+    result_metrics: dict[str, Any] | None
+    result_execution: dict[str, Any] | None
+    result_artifacts: list[dict[str, Any]] | None
+    result_warnings: list[str] | None
+    result_error: dict[str, Any] | None
     failure_message: str | None
     created_at: datetime
     started_at: datetime | None

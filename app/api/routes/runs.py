@@ -4,7 +4,12 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.dependencies import RunServiceDep
 from app.schemas.runs import RunCreate, RunRead
-from app.services.errors import ProjectNotFoundError, RunNotFoundError, UnsupportedRunnerError
+from app.services.errors import (
+    ProjectNotFoundError,
+    RunConfigValidationError,
+    RunNotFoundError,
+    UnsupportedRunnerError,
+)
 
 router = APIRouter(tags=["runs"])
 
@@ -18,6 +23,8 @@ def create_run(
         run = service.create_run(payload)
     except ProjectNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except RunConfigValidationError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
     except UnsupportedRunnerError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
 

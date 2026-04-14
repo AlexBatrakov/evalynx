@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from functools import lru_cache
+from pathlib import Path
 
 
 def _get_bool_env(name: str, default: bool = False) -> bool:
@@ -25,6 +26,21 @@ def _normalize_api_prefix(value: str) -> str:
     return f"/{prefix.rstrip('/')}"
 
 
+def _normalize_optional_path(value: str | None) -> Path | None:
+    if value is None:
+        return None
+
+    stripped = value.strip()
+    if not stripped:
+        return None
+
+    return Path(stripped).expanduser().resolve(strict=False)
+
+
+def _normalize_required_path(value: str) -> Path:
+    return Path(value).expanduser().resolve(strict=False)
+
+
 @dataclass(frozen=True, slots=True)
 class Settings:
     app_name: str = "Evalynx"
@@ -32,6 +48,9 @@ class Settings:
     debug: bool = False
     api_prefix: str = ""
     database_url: str = "sqlite:///./evalynx.db"
+    solo_wargame_repo_path: Path | None = None
+    solo_wargame_python_command: str = ".venv/bin/python"
+    artifact_root: Path = Path("./artifacts")
 
 
 @lru_cache
@@ -42,4 +61,7 @@ def get_settings() -> Settings:
         debug=_get_bool_env("EVALYNX_DEBUG", default=False),
         api_prefix=_normalize_api_prefix(os.getenv("EVALYNX_API_PREFIX", "")),
         database_url=os.getenv("EVALYNX_DATABASE_URL", "sqlite:///./evalynx.db"),
+        solo_wargame_repo_path=_normalize_optional_path(os.getenv("EVALYNX_SOLO_WARGAME_REPO_PATH")),
+        solo_wargame_python_command=os.getenv("EVALYNX_SOLO_WARGAME_PYTHON_COMMAND", ".venv/bin/python"),
+        artifact_root=_normalize_required_path(os.getenv("EVALYNX_ARTIFACT_ROOT", "./artifacts")),
     )

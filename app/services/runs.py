@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -9,8 +10,14 @@ from sqlalchemy.orm import Session
 from app.db.models import Run
 from app.repositories.projects import ProjectRepository
 from app.repositories.runs import RunRepository
+from app.runners import Runner, RunnerConfigValidationError
 from app.schemas.runs import RunCreate
-from app.services.errors import ProjectNotFoundError, RunNotFoundError, UnsupportedRunnerError
+from app.services.errors import (
+    ProjectNotFoundError,
+    RunConfigValidationError as RunConfigError,
+    RunNotFoundError,
+    UnsupportedRunnerError,
+)
 from app.workers.queue import RunQueue
 
 
@@ -38,26 +45,32 @@ class RunService:
         *,
         session: Session,
         run_queue: RunQueue,
-        supported_runners: set[str],
+        runner_registry: Mapping[str, Runner],
     ) -> None:
         self._session = session
         self._projects = ProjectRepository(session)
         self._runs = RunRepository(session)
         self._run_queue = run_queue
-        self._supported_runners = supported_runners
+        self._runner_registry = dict(runner_registry)
 
     def create_run(self, payload: RunCreate) -> Run:
         project = self._projects.get(payload.project_id)
         if project is None:
             raise ProjectNotFoundError(f"Project {payload.project_id} was not found.")
 
-        if payload.runner_type not in self._supported_runners:
-            supported = ", ".join(sorted(self._supported_runners))
+        runner = self._runner_registry.get(payload.runner_type)
+        if runner is None:
+            supported = ", ".join(sorted(self._runner_registry))
             raise UnsupportedRunnerError(
                 f"Runner type '{payload.runner_type}' is not supported. Supported runners: {supported}."
             )
 
-        normalized_config = _normalize_config(payload.config)
+        try:
+            runner_normalized_config = runner.normalize_config(payload.config)
+        except RunnerConfigValidationError as exc:
+            raise RunConfigError(str(exc)) from exc
+
+        normalized_config = _normalize_config(runner_normalized_config)
         config_hash = _compute_config_hash(normalized_config)
 
         run = self._runs.create(

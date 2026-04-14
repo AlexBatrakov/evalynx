@@ -1,0 +1,58 @@
+{
+  "schema_version": "solo_wargame_runner_v1",
+  "status": "succeeded",
+  "operation": "episode_batch",
+  "metrics": {
+    "agent_name": "HeuristicAgent",
+    "episode_count": 4,
+    "victory_count": 3,
+    "defeat_count": 1,
+    "win_rate": 0.75,
+    "defeat_rate": 0.25,
+    "mean_terminal_turn": 5.75,
+    "mean_resolved_marker_count": 4.25,
+    "mean_removed_german_count": 1.5,
+    "mean_player_decision_count": 10.0
+  },
+  "execution": {
+    "mission_id": "mission_01_secure_the_woods_1",
+    "mission_path": "/path/to/workdir/configs/missions/mission_01_secure_the_woods_1.toml",
+    "policy": {
+      "kind": "builtin",
+      "name": "heuristic",
+      "resolved_agent_name": "HeuristicAgent"
+    },
+    "seed_spec": {
+      "kind": "range",
+      "start": 0,
+      "stop": 4
+    },
+    "resolved_seed_count": 4,
+    "git_commit": "abcdef0",
+    "git_dirty": false,
+    "python_version": "3.12.0",
+    "duration_sec": 0.123456
+  },
+  "artifacts": [
+    {
+      "kind": "request",
+      "path": "/path/to/workdir/outputs/evalynx/episode_batch_run_001/request.json",
+      "format": "json",
+      "description": "normalized episode-batch request payload"
+    },
+    {
+      "kind": "episode_rows",
+      "path": "/path/to/workdir/outputs/evalynx/episode_batch_run_001/episodes.jsonl",
+      "format": "jsonl",
+      "description": "one row per completed episode",
+      "episode_count": 4
+    },
+    {
+      "kind": "result",
+      "path": "/path/to/workdir/outputs/evalynx/episode_batch_run_001/result.json",
+      "format": "json",
+      "description": "machine-readable episode-batch result payload"
+    }
+  ],
+  "warnings": []
+}

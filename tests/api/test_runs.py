@@ -43,6 +43,11 @@ def test_create_run_returns_queued_and_lists_through_api(
     }
     assert len(run["config_hash"]) == 64
     assert run["summary"] is None
+    assert run["result_metrics"] is None
+    assert run["result_execution"] is None
+    assert run["result_artifacts"] is None
+    assert run["result_warnings"] is None
+    assert run["result_error"] is None
     assert run["failure_message"] is None
     assert run_queue.pending_run_ids == [run["id"]]
 
@@ -87,7 +92,7 @@ def test_create_run_rejects_unknown_runner(client: TestClient) -> None:
 
     assert response.status_code == 422
     assert response.json() == {
-        "detail": "Runner type 'unknown-runner' is not supported. Supported runners: stub."
+        "detail": "Runner type 'unknown-runner' is not supported. Supported runners: solo_wargame, stub."
     }
 
 
@@ -96,3 +101,80 @@ def test_project_runs_returns_not_found_for_missing_project(client: TestClient) 
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Project 404 was not found."}
+
+
+def test_create_solo_wargame_run_normalizes_config_and_queues(
+    client: TestClient,
+    run_queue: ManualRunQueue,
+) -> None:
+    project_id = _create_project(client)
+
+    response = client.post(
+        "/runs",
+        json={
+            "project_id": project_id,
+            "runner_type": "solo_wargame",
+            "config": {
+                "mission_path": "configs/missions/mission_01_secure_the_woods_1.toml",
+                "policy": {
+                    "kind": "builtin",
+                    "name": "heuristic",
+                },
+                "seed_spec": {
+                    "kind": "range",
+                    "start": 0,
+                    "stop": 4,
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 201
+    run = response.json()
+    assert run["status"] == "queued"
+    assert run["normalized_config"] == {
+        "mission_path": "configs/missions/mission_01_secure_the_woods_1.toml",
+        "policy": {
+            "kind": "builtin",
+            "name": "heuristic",
+        },
+        "seed_spec": {
+            "kind": "range",
+            "start": 0,
+            "stop": 4,
+        },
+        "write_episode_rows": False,
+    }
+    assert run_queue.pending_run_ids == [run["id"]]
+
+
+def test_create_solo_wargame_run_rejects_invalid_config(client: TestClient) -> None:
+    project_id = _create_project(client)
+
+    response = client.post(
+        "/runs",
+        json={
+            "project_id": project_id,
+            "runner_type": "solo_wargame",
+            "config": {
+                "mission_path": "configs/missions/missing.toml",
+                "policy": {
+                    "kind": "builtin",
+                    "name": "heuristic",
+                },
+                "seed_spec": {
+                    "kind": "range",
+                    "start": 0,
+                    "stop": 4,
+                },
+            },
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": (
+            "config.mission_path was not found in the configured solo_wargame repo: "
+            "configs/missions/missing.toml"
+        )
+    }

@@ -13,6 +13,7 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+artifacts/
 
 # Local environment files
 .env

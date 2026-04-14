@@ -8,3 +8,7 @@ class RunNotFoundError(Exception):
 
 class UnsupportedRunnerError(Exception):
     pass
+
+
+class RunConfigValidationError(Exception):
+    pass
