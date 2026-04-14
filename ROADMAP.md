@@ -17,6 +17,7 @@ This roadmap tracks public milestones for Evalynx. It intentionally stays high-l
 - [x] Retry and lifecycle hardening
 - [x] Docker Compose and CI setup
 - [x] MVP polish and reviewer onboarding
+- [x] Final MVP review and positioning pass
 
 ## MVP Outcome
 
@@ -40,4 +41,4 @@ Potential follow-on areas after the MVP:
 
 ## Current Focus
 
-The next milestone is a final MVP review and positioning pass now that the reviewer-facing stack, bootstrap workflow, and CI proof are in place.
+The MVP is complete. The next decision is whether to leave Evalynx as a finished backend portfolio artifact or expand deliberately into follow-on areas such as a second runner, comparison workflows, or richer observability.

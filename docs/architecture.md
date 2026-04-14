@@ -79,7 +79,7 @@ The persistence layer is the source of truth for:
 
 Lifecycle state should remain database-backed and queryable rather than hidden inside worker-local execution flow.
 
-Packet 04 extends the `Run` model beyond lifecycle state so a completed run can retain:
+The current MVP keeps a compact set of JSON-backed result fields on `Run` so a completed run can retain:
 
 - a compact summary
 - result metrics
@@ -90,7 +90,7 @@ Packet 04 extends the `Run` model beyond lifecycle state so a completed run can 
 
 These surfaces are intentionally stored as clear JSON-backed fields on `Run` for the first real runner integration instead of being exploded into several new relational tables too early. PostgreSQL is the normal MVP runtime target, while SQLite remains useful for self-contained tests and narrow local harnesses.
 
-Packet 05 adds `RunAttempt` as the minimal execution-history surface. `Run` remains the user-facing logical job and keeps the latest attempt snapshot for easy inspection, while `RunAttempt` preserves the concrete status, timestamps, failure context, and structured results for each execution attempt.
+`RunAttempt` is the minimal execution-history surface. `Run` remains the user-facing logical job and keeps the latest attempt snapshot for easy inspection, while `RunAttempt` preserves the concrete status, timestamps, failure context, and structured results for each execution attempt.
 
 ### Queue and Worker
 
@@ -102,7 +102,7 @@ Workers are responsible for:
 - persisting terminal results from the runner contract
 - recording failure information
 
-Packet 06 moves the normal runtime onto Redis + RQ. The API enqueues `attempt_id` jobs onto Redis, a separate worker process consumes them through RQ, and the worker persists lifecycle changes back into PostgreSQL.
+The normal runtime uses Redis + RQ. The API enqueues `attempt_id` jobs onto Redis, a separate worker process consumes them through RQ, and the worker persists lifecycle changes back into PostgreSQL.
 
 The repository still keeps a controlled manual queue seam for tests so lifecycle scenarios remain fast and deterministic without requiring Docker or Redis in the test harness. Queue payloads carry attempt identity, and worker writes are guarded so stale or duplicate attempt execution cannot overwrite the latest run snapshot.
 
@@ -146,7 +146,7 @@ This lifecycle is a product concern, not just an implementation detail. Much of 
 
 ## Runtime Packaging
 
-Packet 06 adds a reviewer-oriented local stack:
+The repository includes a reviewer-oriented local stack:
 
 - Docker image for the current FastAPI application and worker code
 - Docker Compose services for `api`, `worker`, `postgres`, and `redis`
@@ -174,9 +174,9 @@ The long-term goal is to make it easy to answer questions such as:
 - which code version was used?
 - what failed, and on which attempt?
 
-## Initial API Surface
+## API Surface
 
-Current Packet 06 endpoints:
+Current endpoints:
 
 - `POST /projects`
 - `GET /projects`
@@ -187,9 +187,9 @@ Current Packet 06 endpoints:
 - `GET /projects/{id}/runs`
 - `GET /health`
 
-## Initial Data Model
+## Data Model
 
-The early MVP is expected to revolve around:
+The MVP revolves around:
 
 - `Project`
 - `Run`
@@ -209,9 +209,9 @@ For reviewer ergonomics, the Compose stack can demonstrate the full async lifecy
 
 A wearable analytics public-demo path remains a strong candidate for a later second runner.
 
-## Planned Code Layout
+## Repository Layout
 
-The repository is expected to evolve toward a structure similar to:
+The repository is organized as:
 
 ```text
 app/
@@ -227,9 +227,9 @@ tests/
 docs/
 ```
 
-## Non-Goals For Early Development
+## MVP Non-Goals
 
-The early MVP does not aim to include:
+The MVP does not aim to include:
 
 - user authentication and authorization
 - dashboards or frontend clients
