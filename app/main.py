@@ -19,7 +19,7 @@ def create_app(
     active_settings = settings or get_settings()
     engine = create_sqlalchemy_engine(active_settings.database_url)
     session_factory = create_session_factory(engine)
-    runner_registry = build_runner_registry()
+    runner_registry = build_runner_registry(active_settings)
     run_worker = RunWorker(
         session_factory=session_factory,
         runner_registry=runner_registry,

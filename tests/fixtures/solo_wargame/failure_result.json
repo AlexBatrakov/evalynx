@@ -1,0 +1,41 @@
+{
+  "schema_version": "solo_wargame_runner_v1",
+  "status": "failed",
+  "operation": "episode_batch",
+  "execution": {
+    "mission_id": "mission_03_secure_the_building",
+    "mission_path": "/path/to/workdir/configs/missions/mission_03_secure_the_building.toml",
+    "policy": {
+      "kind": "builtin",
+      "name": "exact_guided_heuristic"
+    },
+    "seed_spec": {
+      "kind": "range",
+      "start": 0,
+      "stop": 2
+    },
+    "git_commit": "abcdef0",
+    "git_dirty": false,
+    "python_version": "3.12.0",
+    "duration_sec": 0.012345
+  },
+  "artifacts": [
+    {
+      "kind": "request",
+      "path": "/path/to/workdir/outputs/evalynx/episode_batch_run_002/request.json",
+      "format": "json",
+      "description": "normalized episode-batch request payload"
+    },
+    {
+      "kind": "result",
+      "path": "/path/to/workdir/outputs/evalynx/episode_batch_run_002/result.json",
+      "format": "json",
+      "description": "machine-readable episode-batch result payload"
+    }
+  ],
+  "warnings": [],
+  "error": {
+    "kind": "policy_resolution_error",
+    "message": "builtin policy 'exact_guided_heuristic' does not support mission 'mission_03_secure_the_building'; supported missions: 'mission_01_secure_the_woods_1', 'mission_02_secure_the_woods_2'"
+  }
+}
