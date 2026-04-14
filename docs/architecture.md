@@ -88,7 +88,7 @@ Packet 04 extends the `Run` model beyond lifecycle state so a completed run can 
 - warnings
 - structured error details
 
-These surfaces are intentionally stored as clear JSON-backed fields on `Run` for the first real runner integration instead of being exploded into several new relational tables too early. SQLite is suitable for local development in the current repository, while PostgreSQL remains the intended MVP deployment target.
+These surfaces are intentionally stored as clear JSON-backed fields on `Run` for the first real runner integration instead of being exploded into several new relational tables too early. PostgreSQL is the normal MVP runtime target, while SQLite remains useful for self-contained tests and narrow local harnesses.
 
 Packet 05 adds `RunAttempt` as the minimal execution-history surface. `Run` remains the user-facing logical job and keeps the latest attempt snapshot for easy inspection, while `RunAttempt` preserves the concrete status, timestamps, failure context, and structured results for each execution attempt.
 
@@ -102,7 +102,9 @@ Workers are responsible for:
 - persisting terminal results from the runner contract
 - recording failure information
 
-The long-term target remains Redis + RQ. The current vertical slice uses an explicit in-process queue/worker seam so the lifecycle is already separated from the request path without over-expanding early infrastructure work. Queue payloads now carry attempt identity, and worker writes are guarded so stale or duplicate attempt execution cannot overwrite the latest run snapshot.
+Packet 06 moves the normal runtime onto Redis + RQ. The API enqueues `attempt_id` jobs onto Redis, a separate worker process consumes them through RQ, and the worker persists lifecycle changes back into PostgreSQL.
+
+The repository still keeps a controlled manual queue seam for tests so lifecycle scenarios remain fast and deterministic without requiring Docker or Redis in the test harness. Queue payloads carry attempt identity, and worker writes are guarded so stale or duplicate attempt execution cannot overwrite the latest run snapshot.
 
 ### Runner Boundary
 
@@ -142,6 +144,16 @@ Retry follows the same model:
 
 This lifecycle is a product concern, not just an implementation detail. Much of the value of Evalynx comes from making these states explicit and queryable.
 
+## Runtime Packaging
+
+Packet 06 adds a reviewer-oriented local stack:
+
+- Docker image for the current FastAPI application and worker code
+- Docker Compose services for `api`, `worker`, `postgres`, and `redis`
+- an explicit one-shot migration command through a `migrate` service
+
+The migration step is intentionally explicit rather than folded into API startup. That keeps container startup predictable, avoids hidden schema mutation on every boot, and gives reviewers a clear bootstrap workflow.
+
 ## Reproducibility
 
 Reproducibility is a first-class product concern.
@@ -164,7 +176,7 @@ The long-term goal is to make it easy to answer questions such as:
 
 ## Initial API Surface
 
-Current Packet 05 endpoints:
+Current Packet 06 endpoints:
 
 - `POST /projects`
 - `GET /projects`
@@ -192,6 +204,8 @@ The early MVP is expected to revolve around:
 The first real runner integration is `solo-wargame-ai` through its bounded `episode_batch` JSON contract.
 
 It is a good first integration because it already has reproducible execution surfaces and does not depend on private personal data. The Evalynx-side config intentionally stays narrower than the full transport payload so clients provide logical inputs such as mission path, builtin policy, seed spec, and whether episode rows should be written, while Evalynx fills transport-only fields such as schema version, operation, and artifact directory.
+
+For reviewer ergonomics, the Compose stack can demonstrate the full async lifecycle with the built-in `stub` runner out of the box. The real `solo_wargame` path remains the primary integrated runner story and is exercised from host-based app/worker processes when a local checkout of the public external repository is available.
 
 A wearable analytics public-demo path remains a strong candidate for a later second runner.
 

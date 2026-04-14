@@ -41,11 +41,8 @@ def settings(tmp_path: Path) -> Settings:
 @pytest.fixture
 def app(settings: Settings) -> FastAPI:
     _apply_migrations(settings.database_url)
-    application = create_app(settings)
-    background_queue = application.state.run_queue
-    shutdown_queue = getattr(background_queue, "shutdown", None)
-    if callable(shutdown_queue):
-        shutdown_queue()
+    manual_queue = ManualRunQueue(lambda attempt_id: None)
+    application = create_app(settings, run_queue=manual_queue)
     application.state.run_queue = ManualRunQueue(application.state.run_worker.process_attempt)
     return application
 

@@ -15,6 +15,14 @@ def _get_bool_env(name: str, default: bool = False) -> bool:
     return normalized in {"1", "true", "yes", "on"}
 
 
+def _get_int_env(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+
+    return int(value.strip())
+
+
 def _normalize_api_prefix(value: str) -> str:
     prefix = value.strip()
     if not prefix:
@@ -48,6 +56,9 @@ class Settings:
     debug: bool = False
     api_prefix: str = ""
     database_url: str = "sqlite:///./evalynx.db"
+    redis_url: str = "redis://localhost:6379/0"
+    rq_queue_name: str = "evalynx-runs"
+    rq_job_timeout: int = 600
     solo_wargame_repo_path: Path | None = None
     solo_wargame_python_command: str = ".venv/bin/python"
     artifact_root: Path = Path("./artifacts")
@@ -61,6 +72,9 @@ def get_settings() -> Settings:
         debug=_get_bool_env("EVALYNX_DEBUG", default=False),
         api_prefix=_normalize_api_prefix(os.getenv("EVALYNX_API_PREFIX", "")),
         database_url=os.getenv("EVALYNX_DATABASE_URL", "sqlite:///./evalynx.db"),
+        redis_url=os.getenv("EVALYNX_REDIS_URL", "redis://localhost:6379/0"),
+        rq_queue_name=os.getenv("EVALYNX_RQ_QUEUE_NAME", "evalynx-runs"),
+        rq_job_timeout=_get_int_env("EVALYNX_RQ_JOB_TIMEOUT", 600),
         solo_wargame_repo_path=_normalize_optional_path(os.getenv("EVALYNX_SOLO_WARGAME_REPO_PATH")),
         solo_wargame_python_command=os.getenv("EVALYNX_SOLO_WARGAME_PYTHON_COMMAND", ".venv/bin/python"),
         artifact_root=_normalize_required_path(os.getenv("EVALYNX_ARTIFACT_ROOT", "./artifacts")),
