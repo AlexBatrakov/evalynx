@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.db.models import Run
+from app.db.models import Run, RunStatus
 from app.repositories.projects import ProjectRepository
 from app.repositories.runs import RunRepository
 from app.runners import Runner, RunnerConfigValidationError
@@ -16,6 +16,7 @@ from app.services.errors import (
     ProjectNotFoundError,
     RunConfigValidationError as RunConfigError,
     RunNotFoundError,
+    RunRetryNotAllowedError,
     UnsupportedRunnerError,
 )
 from app.workers.queue import RunQueue
@@ -37,6 +38,25 @@ def _normalize_config(value: Any) -> Any:
 def _compute_config_hash(value: Any) -> str:
     payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _clear_run_snapshot(run: Run) -> None:
+    run.summary = None
+    run.result_metrics = None
+    run.result_execution = None
+    run.result_artifacts = None
+    run.result_warnings = None
+    run.result_error = None
+    run.failure_message = None
+    run.started_at = None
+    run.finished_at = None
+
+
+def _next_attempt_number(run: Run) -> int:
+    if not run.attempts:
+        return 1
+
+    return max(attempt.attempt_number for attempt in run.attempts) + 1
 
 
 class RunService:
@@ -80,11 +100,14 @@ class RunService:
             normalized_config=normalized_config,
             config_hash=config_hash,
         )
+        attempt = self._runs.create_attempt(run=run, attempt_number=1)
+        run.current_attempt_id = attempt.id
+        run.current_attempt = attempt
         self._session.commit()
         self._session.refresh(run)
 
         try:
-            self._run_queue.enqueue(run.id)
+            self._run_queue.enqueue(attempt.id)
         except Exception:
             raise
 
@@ -97,6 +120,33 @@ class RunService:
         run = self._runs.get(run_id)
         if run is None:
             raise RunNotFoundError(f"Run {run_id} was not found.")
+
+        return run
+
+    def retry_run(self, run_id: int) -> Run:
+        run = self.get_run(run_id)
+        if run.status is not RunStatus.FAILED:
+            raise RunRetryNotAllowedError(f"Run {run_id} can only be retried from failed state.")
+
+        current_attempt = run.current_attempt
+        if current_attempt is None or current_attempt.status is not RunStatus.FAILED:
+            raise RunRetryNotAllowedError(f"Run {run_id} can only be retried from failed state.")
+
+        attempt = self._runs.create_attempt(
+            run=run,
+            attempt_number=_next_attempt_number(run),
+        )
+        run.status = RunStatus.QUEUED
+        run.current_attempt_id = attempt.id
+        run.current_attempt = attempt
+        _clear_run_snapshot(run)
+        self._session.commit()
+        self._session.refresh(run)
+
+        try:
+            self._run_queue.enqueue(attempt.id)
+        except Exception:
+            raise
 
         return run
 

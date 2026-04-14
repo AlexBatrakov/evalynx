@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from app.db.models import Run
+from app.db.models import Run, RunAttempt
 from app.runners.base import RunnerConfigValidationError, RunnerExecutionError, RunnerResult
 
 RUNNER_TYPE = "solo_wargame"
@@ -197,7 +197,7 @@ class SoloWargameRunner:
             raise RunnerConfigValidationError("solo_wargame config must be an object")
         return normalize_solo_wargame_config(config, repo_path=self._repo_path)
 
-    def execute(self, run: Run) -> RunnerResult:
+    def execute(self, run: Run, attempt: RunAttempt) -> RunnerResult:
         if self._repo_path is None:
             raise RunnerExecutionError(
                 "solo_wargame repo path is not configured.",
@@ -217,7 +217,7 @@ class SoloWargameRunner:
                 },
             )
 
-        artifact_dir = self._artifact_root / f"run-{run.id:06d}"
+        artifact_dir = self._artifact_root / f"run-{run.id:06d}" / f"attempt-{attempt.attempt_number:04d}"
         request_file = artifact_dir / "evalynx-request.json"
         request_payload = build_episode_batch_request(run.normalized_config, artifact_dir=artifact_dir)
 
@@ -229,10 +229,13 @@ class SoloWargameRunner:
             )
         except OSError as exc:
             raise RunnerExecutionError(
-                f"Failed to prepare solo_wargame artifacts for run {run.id}: {exc}",
+                f"Failed to prepare solo_wargame artifacts for run {run.id} attempt {attempt.attempt_number}: {exc}",
                 result_error={
                     "kind": "artifact_setup_error",
-                    "message": f"Failed to prepare solo_wargame artifacts for run {run.id}: {exc}",
+                    "message": (
+                        f"Failed to prepare solo_wargame artifacts for run {run.id} "
+                        f"attempt {attempt.attempt_number}: {exc}"
+                    ),
                     "artifact_dir": str(artifact_dir),
                     "request_file": str(request_file),
                 },

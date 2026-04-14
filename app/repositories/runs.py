@@ -3,14 +3,20 @@ from __future__ import annotations
 from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
-from app.db.models import Run, RunStatus
+from app.db.models import Run, RunAttempt, RunStatus
 
 
 class RunRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def _with_attempts(self, statement):
+        return statement.options(
+            selectinload(Run.current_attempt),
+            selectinload(Run.attempts),
+        )
 
     def create(
         self,
@@ -33,15 +39,43 @@ class RunRepository:
         self._session.flush()
         return run
 
+    def create_attempt(
+        self,
+        *,
+        run: Run,
+        attempt_number: int,
+    ) -> RunAttempt:
+        attempt = RunAttempt(
+            run=run,
+            attempt_number=attempt_number,
+            status=RunStatus.QUEUED,
+        )
+        self._session.add(attempt)
+        self._session.flush()
+        return attempt
+
     def get(self, run_id: int) -> Run | None:
-        return self._session.get(Run, run_id)
+        statement = self._with_attempts(
+            select(Run).where(Run.id == run_id)
+        )
+        return self._session.scalar(statement)
+
+    def get_attempt(self, attempt_id: int) -> RunAttempt | None:
+        statement = (
+            select(RunAttempt)
+            .where(RunAttempt.id == attempt_id)
+            .options(selectinload(RunAttempt.run))
+        )
+        return self._session.scalar(statement)
 
     def list(self) -> list[Run]:
-        statement = select(Run).order_by(Run.id.desc())
+        statement = self._with_attempts(
+            select(Run).order_by(Run.id.desc())
+        )
         return list(self._session.scalars(statement))
 
     def list_by_project(self, project_id: int) -> list[Run]:
-        statement = (
+        statement = self._with_attempts(
             select(Run)
             .where(Run.project_id == project_id)
             .order_by(Run.id.desc())

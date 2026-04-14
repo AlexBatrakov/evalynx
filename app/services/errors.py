@@ -12,3 +12,7 @@ class UnsupportedRunnerError(Exception):
 
 class RunConfigValidationError(Exception):
     pass
+
+
+class RunRetryNotAllowedError(Exception):
+    pass
